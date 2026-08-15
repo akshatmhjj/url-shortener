@@ -34,14 +34,11 @@ services:
         fromDatabase:
           name: url-shortener-db
           property: password
-      - key: REDIS_HOST
-        fromDatabase:
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
           name: url-shortener-redis
-          property: host
-      - key: REDIS_PORT
-        fromDatabase:
-          name: url-shortener-redis
-          property: port
+          property: connectionString
       # Optional: Google OAuth (add after creating credentials)
       - key: GOOGLE_CLIENT_ID
         sync: false
