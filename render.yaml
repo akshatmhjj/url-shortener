@@ -1,0 +1,60 @@
+services:
+  - type: web
+    name: url-shortener-api
+    runtime: node
+    plan: free
+    rootDir: url-shortener-backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: https://your-project-name.vercel.app
+      # Database env vars (auto-linked after creating managed DBs below)
+      - key: DB_HOST
+        fromDatabase:
+          name: url-shortener-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: url-shortener-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: url-shortener-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: url-shortener-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: url-shortener-db
+          property: password
+      - key: REDIS_HOST
+        fromDatabase:
+          name: url-shortener-redis
+          property: host
+      - key: REDIS_PORT
+        fromDatabase:
+          name: url-shortener-redis
+          property: port
+      # Optional: Google OAuth (add after creating credentials)
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+
+databases:
+  - name: url-shortener-db
+    databaseName: url_shortener
+    user: postgres
+    plan: free
+    ipAllowList: []
+
+  - name: url-shortener-redis
+    plan: free
+    ipAllowList: []

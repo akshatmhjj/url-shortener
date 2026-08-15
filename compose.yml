@@ -1,0 +1,117 @@
+name: url-shortener
+
+services:
+  gateway:
+    build:
+      context: ./url-shortener-frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:?VITE_GOOGLE_CLIENT_ID must be set}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - app_network
+
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB must be set}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER must be set}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - app_network
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD must be set}"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - app_network
+
+  migrate:
+    build:
+      context: ./url-shortener-backend
+      dockerfile: Dockerfile
+    command: ["npm", "run", "init-db"]
+    restart: "no"
+    environment: &api_environment
+      NODE_ENV: production
+      PORT: 3000
+      LOG_LEVEL: info
+      LOG_FORMAT: json
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:?POSTGRES_DB must be set}
+      DB_USER: ${POSTGRES_USER:?POSTGRES_USER must be set}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      DB_SSL: "false"
+      DB_POOL_MIN: 1
+      DB_POOL_MAX: 5
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set}
+      API_URL: ${API_URL:?API_URL must be set}
+      API_VERSION: v1
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      JWT_EXPIRY: 1h
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?GOOGLE_CLIENT_ID must be set}
+      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN must be set}
+      RATE_LIMIT_WINDOW: 60
+      RATE_LIMIT_MAX_REQUESTS: 100
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - app_network
+
+  api:
+    build:
+      context: ./url-shortener-backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment: *api_environment
+    expose:
+      - "3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "const request=require('http').get('http://127.0.0.1:3000/health',res=>process.exit(res.statusCode===200?0:1));request.on('error',()=>process.exit(1));request.setTimeout(5000,()=>{request.destroy();process.exit(1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - app_network
+
+volumes:
+  postgres_data:
+
+networks:
+  app_network:
+    driver: bridge
