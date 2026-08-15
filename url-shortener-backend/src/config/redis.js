@@ -2,22 +2,7 @@ const redis = require('redis');
 const logger = require('../utils/logger');
 
 const redisClient = redis.createClient({
-  host: process.env.REDIS_HOST || 'localhost',
-  port: process.env.REDIS_PORT || 6379,
-  password: process.env.REDIS_PASSWORD || undefined,
-  db: parseInt(process.env.REDIS_DB) || 0,
-  retry_strategy: (options) => {
-    if (options.error && options.error.code === 'ECONNREFUSED') {
-      logger.error('Redis connection refused');
-    }
-    if (options.total_retry_time > 1000 * 60 * 60) {
-      return new Error('Redis retry time exhausted');
-    }
-    if (options.attempt > 10) {
-      return undefined;
-    }
-    return Math.min(options.attempt * 100, 3000);
-  },
+  url: process.env.REDIS_URL,
 });
 
 redisClient.on('error', (err) => {
@@ -32,62 +17,57 @@ redisClient.on('reconnecting', () => {
   logger.warn('Redis reconnecting...');
 });
 
+const connectRedis = async () => {
+  if (!redisClient.isOpen) {
+    await redisClient.connect();
+  }
+};
+
 module.exports = {
-  get: (key) => new Promise((resolve, reject) => {
-    redisClient.get(key, (err, value) => {
-      if (err) reject(err);
-      else resolve(value);
-    });
-  }),
+  connect: connectRedis,
 
-  set: (key, value, ttl = null) => new Promise((resolve, reject) => {
+  get: async (key) => {
+    await connectRedis();
+    return redisClient.get(key);
+  },
+
+  set: async (key, value, ttl = null) => {
+    await connectRedis();
+
     if (ttl) {
-      redisClient.setex(key, ttl, value, (err) => {
-        if (err) reject(err);
-        else resolve(true);
-      });
+      await redisClient.setEx(key, ttl, value);
     } else {
-      redisClient.set(key, value, (err) => {
-        if (err) reject(err);
-        else resolve(true);
-      });
+      await redisClient.set(key, value);
     }
-  }),
 
-  del: (key) => new Promise((resolve, reject) => {
-    redisClient.del(key, (err, result) => {
-      if (err) reject(err);
-      else resolve(result);
-    });
-  }),
+    return true;
+  },
 
-  exists: (key) => new Promise((resolve, reject) => {
-    redisClient.exists(key, (err, result) => {
-      if (err) reject(err);
-      else resolve(result === 1);
-    });
-  }),
+  del: async (key) => {
+    await connectRedis();
+    return redisClient.del(key);
+  },
 
-  incr: (key) => new Promise((resolve, reject) => {
-    redisClient.incr(key, (err, result) => {
-      if (err) reject(err);
-      else resolve(result);
-    });
-  }),
+  exists: async (key) => {
+    await connectRedis();
+    return (await redisClient.exists(key)) === 1;
+  },
 
-  expire: (key, ttl) => new Promise((resolve, reject) => {
-    redisClient.expire(key, ttl, (err, result) => {
-      if (err) reject(err);
-      else resolve(result);
-    });
-  }),
+  incr: async (key) => {
+    await connectRedis();
+    return redisClient.incr(key);
+  },
 
-  flushDb: () => new Promise((resolve, reject) => {
-    redisClient.flushdb((err) => {
-      if (err) reject(err);
-      else resolve(true);
-    });
-  }),
+  expire: async (key, ttl) => {
+    await connectRedis();
+    return redisClient.expire(key, ttl);
+  },
+
+  flushDb: async () => {
+    await connectRedis();
+    await redisClient.flushDb();
+    return true;
+  },
 
   getClient: () => redisClient,
 };
