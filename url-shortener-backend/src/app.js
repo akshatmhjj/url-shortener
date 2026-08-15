@@ -12,6 +12,7 @@ const analyticsRoutes = require('./routes/analyticsRoutes');
 const authRoutes = require('./routes/authRoutes');
 
 const app = express();
+app.set('trust proxy', 1);
 
 // Request ID must be first to tag all subsequent logs
 app.use(middleware.requestId);
