@@ -69,14 +69,14 @@ export default function Layout() {
             <NavLink to="/" end className={({ isActive }) => isActive ? 'active' : ''}>
               📊 Dashboard
             </NavLink>
-            <NavLink to="/urls" className={({ isActive }) => isActive ? 'active' : ''}>
+            {/* <NavLink to="/urls" className={({ isActive }) => isActive ? 'active' : ''}>
               🔗 My URLs
-            </NavLink>
+            </NavLink> */}
           </nav>
 
           {/* Right Section: Auth & Health Indicator & Hamburger Toggle */}
           <div className="header-right">
-            {user ? (
+            {/* {user ? (
               <div className="user-profile-nav">
                 <div className="user-avatar" title={user.email} aria-label={user.email}>
                   {user.email.charAt(0).toUpperCase()}
@@ -89,7 +89,7 @@ export default function Layout() {
               <button className="btn btn-primary btn-sm" onClick={() => setLoginModalOpen(true)}>
                 Sign In
               </button>
-            )}
+            )} */}
 
             <div className="health-indicator-pill">
               <div className={`health-dot ${health?.status === 'ok' ? '' : 'error'}`}></div>
@@ -116,13 +116,13 @@ export default function Layout() {
           >
             📊 Dashboard
           </NavLink>
-          <NavLink
+          {/* <NavLink
             to="/urls"
             className={({ isActive }) => isActive ? 'active' : ''}
             onClick={() => setMobileMenuOpen(false)}
           >
             🔗 My URLs
-          </NavLink>
+          </NavLink> */}
           <div className="mobile-health-container">
             <div className={`health-dot ${health?.status === 'ok' ? '' : 'error'}`}></div>
             <span>{health?.status === 'ok' ? 'System Active' : 'Checking...'}</span>
