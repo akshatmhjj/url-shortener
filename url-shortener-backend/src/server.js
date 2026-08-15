@@ -17,11 +17,10 @@ const startServer = async () => {
     logger.info('✓ Database connected');
 
     // Test Redis connection
-    // Test Redis connection
     logger.info('Testing Redis connection...');
-    await redis.connect();
     await redis.set('health_check', 'ok', 10);
     const check = await redis.get('health_check');
+
     if (check === 'ok') {
       logger.info('✓ Redis connected');
     }
