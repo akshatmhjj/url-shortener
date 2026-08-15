@@ -1,11 +1,10 @@
 services:
   - type: web
     name: url-shortener-api
-    runtime: node
+    runtime: docker
     plan: free
     rootDir: url-shortener-backend
-    buildCommand: npm install
-    startCommand: npm start
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: NODE_ENV
         value: production
